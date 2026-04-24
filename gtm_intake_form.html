@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GTM Engineer Add-On — Client Intake</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #F4F7FF;
+  --white: #FFFFFF;
+  --navy: #0A1628;
+  --blue: #2563EB;
+  --blue-light: #EEF4FF;
+  --blue-mid: #DBEAFE;
+  --text: #0A1628;
+  --text2: #4B6080;
+  --text3: #9AAEC8;
+  --border: #D4E0F5;
+  --red: #EF4444;
+  --red-bg: #FEF2F2;
+  --green: #10B981;
+  --font: 'Poppins', sans-serif;
+  --mono: 'DM Mono', monospace;
+}
+body { font-family: var(--font); background: var(--bg); min-height: 100vh; overflow: hidden; }
+
+.progress-wrap { position: fixed; top: 0; left: 0; right: 0; height: 4px; background: var(--blue-mid); z-index: 100; }
+.progress-fill { height: 100%; background: var(--blue); transition: width 0.5s cubic-bezier(0.4,0,0.2,1); width: 0%; box-shadow: 0 0 8px rgba(37,99,235,0.4); }
+
+.topbar { position: fixed; top: 4px; left: 0; right: 0; height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 36px; z-index: 99; }
+.logo { font-size: 15px; font-weight: 800; color: var(--navy); letter-spacing: -0.01em; }
+.logo span { color: var(--blue); }
+.progress-label { font-family: var(--mono); font-size: 12px; color: var(--text3); }
+
+.screen { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; padding: 80px 24px 110px; pointer-events: none; opacity: 0; transform: translateY(48px); transition: opacity 0.38s ease, transform 0.38s ease; }
+.screen.active { opacity: 1; transform: translateY(0); pointer-events: all; }
+.screen.exit-up { opacity: 0; transform: translateY(-48px); pointer-events: none; transition: opacity 0.28s ease, transform 0.28s ease; }
+
+.q-wrap { width: 100%; max-width: 620px; }
+.q-eyebrow { font-family: var(--mono); font-size: 11px; color: var(--blue); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+.q-eyebrow::before { content: ''; display: inline-block; width: 18px; height: 2px; background: var(--blue); border-radius: 2px; }
+.q-text { font-size: clamp(20px, 3.5vw, 30px); font-weight: 700; color: var(--text); line-height: 1.2; letter-spacing: -0.01em; margin-bottom: 8px; }
+.q-sub { font-family: var(--mono); font-size: 13px; color: var(--text2); margin-bottom: 24px; line-height: 1.65; max-width: 520px; }
+
+.q-input { width: 100%; background: var(--white); border: 2px solid var(--border); border-radius: 12px; color: var(--text); font-family: var(--font); font-size: 16px; font-weight: 500; padding: 15px 18px; outline: none; transition: border-color 0.2s, box-shadow 0.2s; margin-bottom: 10px; }
+.q-input:focus { border-color: var(--blue); box-shadow: 0 0 0 4px rgba(37,99,235,0.08); }
+.q-input::placeholder { color: var(--text3); font-weight: 400; }
+textarea.q-input { min-height: 110px; resize: vertical; }
+
+.options-list { display: flex; flex-direction: column; gap: 7px; margin-bottom: 18px; }
+.options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-bottom: 18px; }
+.opt { display: flex; align-items: center; gap: 12px; background: var(--white); border: 2px solid var(--border); border-radius: 11px; padding: 13px 16px; cursor: pointer; transition: all 0.15s ease; font-size: 14px; font-weight: 600; color: var(--text2); text-align: left; }
+.opt:hover { border-color: var(--blue); color: var(--text); background: var(--blue-light); }
+.opt.selected { border-color: var(--blue); background: var(--blue-light); color: var(--blue); }
+.opt-key { width: 24px; height: 24px; border-radius: 6px; background: var(--blue-mid); display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 10px; font-weight: 500; color: var(--blue); flex-shrink: 0; transition: all 0.15s; }
+.opt.selected .opt-key { background: var(--blue); color: white; }
+
+.seg-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-bottom: 20px; }
+.seg-card { background: var(--white); border: 2px solid var(--border); border-radius: 14px; padding: 16px; cursor: pointer; transition: all 0.18s ease; position: relative; }
+.seg-card:hover { border-color: var(--blue); background: var(--blue-light); }
+.seg-card.selected { border-color: var(--blue); background: var(--blue-light); }
+.seg-icon { font-size: 20px; margin-bottom: 7px; }
+.seg-title { font-size: 13px; font-weight: 800; color: var(--text); margin-bottom: 4px; }
+.seg-desc { font-family: var(--mono); font-size: 11px; color: var(--text2); line-height: 1.5; }
+.seg-price { display: inline-block; margin-top: 9px; font-family: var(--mono); font-size: 11px; color: var(--blue); background: var(--blue-mid); border-radius: 20px; padding: 2px 8px; }
+.seg-check { position: absolute; top: 11px; right: 11px; width: 20px; height: 20px; border-radius: 50%; background: var(--border); display: flex; align-items: center; justify-content: center; font-size: 11px; color: transparent; transition: all 0.18s; }
+.seg-card.selected .seg-check { background: var(--blue); color: white; }
+
+.action-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.btn-next { display: inline-flex; align-items: center; gap: 8px; background: var(--navy); color: white; border: none; border-radius: 10px; padding: 13px 22px; font-family: var(--font); font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.2s ease; letter-spacing: -0.01em; }
+.btn-next:hover { background: var(--blue); transform: translateY(-1px); box-shadow: 0 8px 20px rgba(37,99,235,0.25); }
+.btn-next:active { transform: translateY(0); }
+.btn-hint { font-family: var(--mono); font-size: 11px; color: var(--text3); }
+
+.flag { display: none; border-radius: 10px; padding: 11px 15px; font-family: var(--mono); font-size: 12px; line-height: 1.6; margin-bottom: 14px; }
+.flag.show { display: block; animation: fadeIn 0.2s ease; }
+.flag-warn { background: var(--red-bg); border: 1px solid #FECACA; color: var(--red); }
+.flag-info { background: var(--blue-light); border: 1px solid var(--blue-mid); color: var(--blue); }
+
+.pricing-pill { position: fixed; bottom: 28px; right: 28px; background: var(--navy); color: white; border-radius: 40px; padding: 10px 18px; display: flex; align-items: center; gap: 10px; z-index: 99; transition: all 0.3s ease; box-shadow: 0 6px 20px rgba(10,22,40,0.12); }
+.pricing-pill.bump { transform: scale(1.06); box-shadow: 0 8px 28px rgba(37,99,235,0.3); }
+.pp-label { font-family: var(--mono); font-size: 10px; color: var(--text3); }
+.pp-price { font-size: 16px; font-weight: 800; color: #60A5FA; letter-spacing: -0.02em; }
+
+.nav-arrows { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; z-index: 99; }
+.nav-btn { width: 36px; height: 36px; border-radius: 8px; background: var(--white); border: 1.5px solid var(--border); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.15s; color: var(--text2); }
+.nav-btn:hover { background: var(--blue-light); border-color: var(--blue); color: var(--blue); }
+.nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* Intro */
+.intro-wrap { text-align: center; max-width: 540px; margin: 0 auto; }
+.intro-badge { display: inline-flex; align-items: center; gap: 6px; background: var(--navy); color: white; border-radius: 20px; padding: 6px 14px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 24px; }
+.intro-badge span { color: #60A5FA; }
+.intro-title { font-size: clamp(28px, 5vw, 44px); font-weight: 800; color: var(--text); line-height: 1.1; letter-spacing: -0.02em; margin-bottom: 16px; }
+.intro-title em { color: var(--blue); font-style: normal; }
+.intro-sub { font-family: var(--mono); font-size: 13px; color: var(--text2); line-height: 1.7; margin-bottom: 28px; }
+.intro-chips { display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; margin-bottom: 28px; }
+.chip { display: flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 11px; color: var(--text2); }
+.chip-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--blue); }
+.btn-start { background: var(--navy); color: white; border: none; border-radius: 12px; padding: 15px 32px; font-family: var(--font); font-size: 15px; font-weight: 800; cursor: pointer; transition: all 0.2s; letter-spacing: -0.02em; }
+.btn-start:hover { background: var(--blue); transform: translateY(-2px); box-shadow: 0 10px 24px rgba(37,99,235,0.3); }
+
+/* Outro */
+.outro-wrap { text-align: center; max-width: 500px; margin: 0 auto; }
+.outro-icon { font-size: 44px; margin-bottom: 16px; }
+.outro-title { font-size: 30px; font-weight: 800; color: var(--text); letter-spacing: -0.02em; margin-bottom: 10px; }
+.outro-sub { font-family: var(--mono); font-size: 13px; color: var(--text2); line-height: 1.7; margin-bottom: 24px; }
+.sum-box { background: var(--white); border: 1.5px solid var(--border); border-radius: 14px; padding: 18px 22px; text-align: left; margin-bottom: 20px; }
+.sum-row { display: flex; justify-content: space-between; font-size: 13px; padding: 6px 0; border-bottom: 1px solid var(--border); }
+.sum-row:last-child { border: none; }
+.sum-k { color: var(--text2); font-family: var(--mono); font-size: 11px; }
+.sum-v { font-weight: 700; color: var(--text); font-size: 13px; }
+.sum-total .sum-v { color: var(--blue); font-size: 16px; }
+
+@keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+@media (max-width: 540px) { .seg-grid, .options-grid { grid-template-columns: 1fr; } .topbar { padding: 0 16px; } .pricing-pill { bottom: 76px; right: 14px; } }
+</style>
+</head>
+<body>
+
+<div class="progress-wrap"><div class="progress-fill" id="progressFill"></div></div>
+<div class="topbar">
+  <div class="logo">Hey<span>Reach</span> · GTM</div>
+  <div class="progress-label" id="progressLabel"></div>
+</div>
+<div class="pricing-pill" id="pricingPill">
+  <div><div class="pp-label">Est. investment</div><div class="pp-price" id="pillPrice">$2,000</div></div>
+</div>
+<div class="nav-arrows">
+  <button class="nav-btn" id="btnBack" onclick="goBack()" disabled>
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M10 12L6 8l4-4"/></svg>
+  </button>
+  <button class="nav-btn" id="btnFwd" onclick="goNext()">
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 4l4 4-4 4"/></svg>
+  </button>
+</div>
+
+<!-- 0 INTRO -->
+<div class="screen active" id="screen-0">
+  <div class="intro-wrap">
+    <div class="intro-badge">Hey<span>Reach</span> · GTM Engineer Add-On</div>
+    <div class="intro-title">Let's scope<br>your <em>GTM system.</em></div>
+    <div class="intro-sub">This form helps your GTM Engineer understand your stack, goals, and constraints before Day 1. Takes 10–12 minutes. Be specific — vague answers slow everything down.</div>
+    <div class="intro-chips">
+      <div class="chip"><div class="chip-dot"></div>10–12 minutes</div>
+      <div class="chip"><div class="chip-dot"></div>Feeds Day 1 Assessment</div>
+      <div class="chip"><div class="chip-dot"></div>Internal only</div>
+    </div>
+    <button class="btn-start" onclick="goNext()">Start intake →</button>
+  </div>
+</div>
+
+<!-- 1 Company name -->
+<div class="screen" id="screen-1">
+  <div class="q-wrap">
+    <div class="q-eyebrow">Company · 1 of 5</div>
+    <div class="q-text">What's your company name and website?</div>
+    <div class="q-sub">We'll do our own research before Day 1 — this helps us prepare.</div>
+    <input class="q-input" type="text" placeholder="Acme Inc." id="companyName" onkeydown="enterNext(event)">
+    <input class="q-input" type="url" placeholder="https://acme.com" id="companyUrl" onkeydown="enterNext(event)">
+    <div class="action-row">
+      <button class="btn-next" onclick="goNext()">OK <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 8h10M9 4l4 4-4 4"/></svg></button>
+      <span class="btn-hint">press Enter ↵</span>
+    </div>
+  </div>
+</div>
+
+<!-- 2 Role -->
+<div class="screen" id="screen-2">
+  <div class="q-wrap">
+    <div class="q-eyebrow">Company · 2 of 5</div>
+    <div class="q-text">What's your role?</div>
+    <div class="q-sub">Signals decision-making authority — important for Day 1.</div>
+    <div class="options-list">
+      <button class="opt" onclick="pickOpt(this,'role','founder')"><span class="opt-key">A</span>Founder / Owner</button>
+      <button class="opt" onclick="pickOpt(this,'role','clevel')"><span class="opt-key">B</span>C-Level (CEO, CRO, COO…)</button>
+      <button class="opt" onclick="pickOpt(this,'role','vp')"><span class="opt-key">C</span>VP / Head of Sales or Marketing</button>
+      <button class="opt" onclick="pickOpt(this,'role','manager')"><span class="opt-key">D</span>Sales / Marketing Manager</button>
+      <button class="opt" onclick="pickOpt(this,'role','ic')"><span class="opt-key">E</span>Individual Contributor</button>
+      <button class="opt" onclick="pickOpt(this,'role','other')"><span class="opt-key">F</span>Other</button>
+    </div>
+  </div>
+</div>
+
+<!-- 3 Decision maker -->
+<div class="screen" id="screen-3">
+  <div class="q-wrap">
+    <div class="q-eyebrow">Company · 3 of 5</div>
+    <div class="q-text">Are you the final decision-maker on tooling, budget, and direction?</div>
+    <div class="q-sub">If not, we need the approver at Day 1 — approval cycles kill momentum.</div>
+    <div class="options-list">
+      <button class="opt" onclick="pickOpt(this,'decision','yes'); hideFlag('flag-decision'); hide('approverWrap')"><span class="opt-key">A</span>Yes — fully me</button>
+      <button class="opt" onclick="pickOpt(this,'decision','partly'); showFlag('flag-decision'); show('approverWrap')"><span class="opt-key">B</span>Partly</button>
+      <button class="opt" onclick="pickOpt(this,'decision','no'); showFlag('flag-decision'); show('approverWrap')"><span class="opt-key">C</span>No</button>
+    </div>
+    <div class="flag flag-warn" id="flag-decision">⚠ We'll need the approver present at Day 1. Please note their name below.</div>
+    <div id="approverWrap" style="display:none"><input class="q-input" type="text" placeholder="Approver name and role" id="approverName"></div>
+    <div class="action-row"><button class="btn-next" onclick="goNext()">OK <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 8h10M9 4l4 4-4 4"/></svg></button></div>
+  </div>
+</div>
+
+<!-- 4 Stage -->
+<div class="screen" id="screen-4">
+  <div class="q-wrap">
+    <div class="q-eyebrow">Company · 4 of 5</div>
+    <div class="q-text">What stage is the company at?</div>
+    <div class="q-sub">Helps us calibrate the right level of system maturity for your situation.</div>
+    <div class="options-list">
+      <button class="opt" onclick="pickOpt(this,'stage','prerev'); showFlag('flag-stage')"><span class="opt-key">A</span>Pre-revenue / idea validation</button>
+      <button class="opt" onclick="pickOpt(this,'stage','early'); hideFlag('flag-stage')"><span class="opt-key">B</span>Early revenue ($0–$100K ARR)</button>
+      <button class="opt" onclick="pickOpt(this,'stage','scaling'); hideFlag('flag-stage')"><span class="opt-key">C</span>Scaling ($100K–$1M ARR)</button>
+      <button class="opt" onclick="pickOpt(this,'stage','established'); hideFlag('flag-stage')"><span class="opt-key">D</span>Established ($1M–$10M ARR)</button>
+      <button class="opt" onclick="pickOpt(this,'stage','mature'); hideFlag('flag-stage')"><span class="opt-key">E</span>Mature ($10M+ ARR)</button>
+    </div>
+    <div class="flag flag-warn" id="flag-stage">⚠ Pre-revenue companies building enterprise-grade outbound is a common mismatch. We'll calibrate scope carefully at Day 1.</div>
+  </div>
+</div>
+
+<!-- 5 Team size -->
+<div class="screen" id="screen-5">
+  <div class="q-wrap">
+    <div class="q-eyebrow">Company · 5 of 5</div>
+    <div class="q-text">How many people are on your team?</div>
+    <div class="options-grid">
+      <button class="opt" onclick="pickOpt(this,'team','solo')"><span class="opt-key">A</span>Just me</button>
+      <button class="opt" onclick="pickOpt(this,'team','2-5')"><span class="opt-key">B</span>2–5</button>
+      <button class="opt" onclick="pickOpt(this,'team','6-20')"><span class="opt-key">C</span>6–20</button>
+      <button class="opt" onclick="pickOpt(this,'team','21-50')"><span class="opt-key">D</span>21–50</button>
+      <button class="opt" onclick="pickOpt(this,'team','51-200')"><span class="opt-key">E</span>51–200</button>
+      <button class="opt" onclick="pickOpt(this,'team','200+')"><span class="opt-key">F</span>200+</button>
+    </div>
+  </div>
+</div>
+
+<!-- 6 Offer -->
+<div class="screen" id="screen-6">
+  <div class="q-wrap">
+    <div class="q-eyebrow">Offer & ICP · 1 of 3</div>
+    <div class="q-text">What do you sell and what's the core value prop?</div>
+    <div class="q-sub">2–3 sentences. Short answers here predict weak engagements — be specific.</div>
+    <textarea class="q-input" placeholder="We help B2B SaaS companies reduce churn by... Our core value is..." id="offerDesc" onkeydown="ctrlEnterNext(event)"></textarea>
+    <div class="action-row">
+      <button class="btn-next" onclick="goNext()">OK <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 8h10M9 4l4 4-4 4"/></svg></button>
+      <span class="btn-hint">Ctrl + Enter ↵</span>
+    </div>
+  </div>
+</div>
+
+<!-- 7 ICP -->
+<div class="screen" id="screen-7">
+  <div class="q-wrap">
+    <div class="q-eyebrow">Offer & ICP · 2 of 3</div>
+    <div class="q-text">Describe your ICP. Who is your ideal customer?</div>
+    <div class="q-sub">"B2B companies" is not an ICP. "Series A SaaS founders who just hired their first SDR" is.</div>
+    <textarea class="q-input" placeholder="Industry, seniority, company size, trigger events that make them a fit..." id="icpDesc" onkeydown="ctrlEnterNext(event)"></textarea>
+    <div class="action-row">
+      <button class="btn-next" onclick="goNext()">OK <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 8h10M9 4l4 4-4 4"/></svg></button>
+      <span class="btn-hint">Ctrl + Enter ↵</span>
+    </div>
+  </div>
+</div>
+
+<!-- 8 Deal size -->
+<div class="screen" id="screen-8">
+  <div class="q-wrap">
+    <div class="q-eyebrow">Offer & ICP · 3 of 3</div>
+    <div class="q-text">Average deal size and typical sales cycle?</div>
+    <div class="q-sub">Helps us reverse-engineer realistic volume targets and pipeline math.</div>
+    <input class="q-input" type="text" placeholder="e.g. $8,000 ACV" id="dealSize" onkeydown="enterNext(event)">
+    <input class="q-input" type="text" placeholder="e.g. 30–60 day cycle" id="salesCycle" onkeydown="enterNext(event)">
+    <div class="action-row">
+      <button class="btn-next" onclick="goNext()">OK <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 8h10M9 4l4 4-4 4"/></svg></button>
+      <span class="btn-hint">press Enter ↵</span>
+    </div>
+  </div>
+</div>
+
+<!-- 9 Email infra -->
+<div class="screen" id="screen-9">
+  <div class="q-wrap">
+    <div class="q-eyebrow">Infrastructure · 1 of 4</div>
+    <div class="q-text">Do you have email infrastructure in place?</div>
+    <div class="q-sub">Sending domains and warmed inboxes. Hard gate for Outbound Messaging and CRM segments.</div>
+    <div class="options-list">
+      <button class="opt" onclick="pickOpt(this,'infra','full'); hideFlag('flag-infra')"><span class="opt-key">A</span>Yes — multiple domains, fully warmed</button>
+      <button class="opt" onclick="pickOpt(this,'infra','single'); hideFlag('flag-infra')"><span class="opt-key">B</span>Yes — single domain, warmed</button>
+      <button class="opt" onclick="pickOpt(this,'infra','partial'); hideFlag('flag-infra')"><span class="opt-key">C</span>Partially — domains bought, not warmed yet</button>
+      <button class="opt" onclick="pickOpt(this,'infra','none'); showFlag('flag-infra')"><span class="opt-key">D</span>None in place</button>
+    </div>
+    <div class="flag flag-warn" id="flag-infra">⚠ Without email infra, Outbound Messaging and CRM & Multi-Channel cannot proceed. We'll need to scope infra setup first — adds time and cost.</div>
+  </div>
+</div>
+
+<!-- 10 Volume -->
+<div class="screen" id="screen-10">
+  <div class="q-wrap">
+    <div class="q-eyebrow">Infrastructure · 2 of 4</div>
+    <div class="q-text">How many leads do you want to reach out to per month?</div>
+    <div class="q-sub">Determines whether your infrastructure can actually support the volume.</div>
+    <div class="options-list">
+      <button class="opt" onclick="pickOpt(this,'volume','u500'); checkVolume()"><span class="opt-key">A</span>Under 500</button>
+      <button class="opt" onclick="pickOpt(this,'volume','500-1500'); checkVolume()"><span class="opt-key">B</span>500–1,500</button>
+      <button class="opt" onclick="pickOpt(this,'volume','1500-5000'); checkVolume()"><span class="opt-key">C</span>1,500–5,000</button>
+      <button class="opt" onclick="pickOpt(this,'volume','5000-15000'); checkVolume()"><span class="opt-key">D</span>5,000–15,000</button>
+      <button class="opt" onclick="pickOpt(this,'volume','15000+'); checkVolume()"><span class="opt-key">E</span>15,000+</button>
+    </div>
+    <div class="flag flag-warn" id="flag-volume">⚠ Volume target doesn't match your inbox count. We'll flag this at Day 1 and plan infrastructure scaling.</div>
+  </div>
+</div>
+
+<!-- 11 Tools -->
+<div class="screen" id="screen-11">
+  <div class="q-wrap">
+    <div class="q-eyebrow">Infrastructure · 3 of 4</div>
+    <div class="q-text">Which tools are you currently using?</div>
+    <div class="q-sub">Select all that apply — affects integration scope and tooling costs.</div>
+    <div class="options-grid">
+      <button class="opt" onclick="toggleOpt(this,'tools','heyreach'); calcStack()"><span class="opt-key">A</span>HeyReach</button>
+      <button class="opt" onclick="toggleOpt(this,'tools','smartlead'); calcStack()"><span class="opt-key">B</span>Smartlead / Instantly</button>
+      <button class="opt" onclick="toggleOpt(this,'tools','clay'); calcStack()"><span class="opt-key">C</span>Clay</button>
+      <button class="opt" onclick="toggleOpt(this,'tools','apollo'); calcStack()"><span class="opt-key">D</span>Apollo / Sales Nav</button>
+      <button class="opt" onclick="toggleOpt(this,'tools','hubspot'); calcStack()"><span class="opt-key">E</span>HubSpot CRM</button>
+      <button class="opt" onclick="toggleOpt(this,'tools','salesforce'); calcStack()"><span class="opt-key">F</span>Salesforce</button>
+      <button class="opt" onclick="toggleOpt(this,'tools','airtable'); calcStack()"><span class="opt-key">G</span>Airtable / Notion</button>
+      <button class="opt" onclick="toggleOpt(this,'tools','automation'); calcStack()"><span class="opt-key">H</span>n8n / Zapier / Make</button>
+      <button class="opt" onclick="toggleOpt(this,'tools','none'); calcStack()"><span class="opt-key">I</span>None of the above</button>
+    </div>
+    <div class="flag flag-info" id="flag-stack"></div>
+    <div class="action-row" style="margin-top:4px">
+      <button class="btn-next" onclick="goNext()">OK <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 8h10M9 4l4 4-4 4"/></svg></button>
+    </div>
+  </div>
+</div>
+
+<!-- 12 Budget -->
+<div class="screen" id="screen-12">
+  <div class="q-wrap">
+    <div class="q-eyebrow">Infrastructure · 4 of 4</div>
+    <div class="q-text">Monthly tooling budget (excluding HeyReach subscription)?</div>
+    <div class="q-sub">Reality check — Clay + enrichment + email infra easily hits $500+/mo.</div>
+    <div class="options-list">
+      <button class="opt" onclick="pickOpt(this,'budget','u200'); showFlag('flag-budget')"><span class="opt-key">A</span>Under $200/mo</button>
+      <button class="opt" onclick="pickOpt(this,'budget','200-500'); hideFlag('flag-budget')"><span class="opt-key">B</span>$200–$500/mo</button>
+      <button class="opt" onclick="pickOpt(this,'budget','500-1500'); hideFlag('flag-budget')"><span class="opt-key">C</span>$500–$1,500/mo</button>
+      <button class="opt" onclick="pickOpt(this,'budget','1500-5000'); hideFlag('flag-budget')"><span class="opt-key">D</span>$1,500–$5,000/mo</button>
+      <button class="opt" onclick="pickOpt(this,'budget','5000+'); hideFlag('flag-budget')"><span class="opt-key">E</span>$5,000+/mo</button>
+      <button class="opt" onclick="pickOpt(this,'budget','unsure'); hideFlag('flag-budget')"><span class="opt-key">F</span>Not sure yet</button>
+    </div>
+    <div class="flag flag-warn" id="flag-budget">⚠ Under $200/mo typically can't support the required stack. We'll scope something leaner at Day 1.</div>
+  </div>
+</div>
+
+<!-- 13 Segments -->
+<div class="screen" id="screen-13">
+  <div class="q-wrap">
+    <div class="q-eyebrow">Service Buckets</div>
+    <div class="q-text">Which segments are you applying for?</div>
+    <div class="q-sub">Select all that apply. Each segment is $1,000 on top of your subscription.</div>
+    <div class="seg-grid">
+      <div class="seg-card" onclick="toggleSeg('data')" id="seg-data">
+        <div class="seg-check" id="sc-data">✓</div>
+        <div class="seg-icon">🗄</div>
+        <div class="seg-title">Data Sourcing</div>
+        <div class="seg-desc">Lead sourcing, enrichment, Clay workflows, Airtable, scrapers, ICP lists</div>
+        <div class="seg-price">+$1,000</div>
+      </div>
+      <div class="seg-card" onclick="toggleSeg('messaging')" id="seg-messaging">
+        <div class="seg-check" id="sc-messaging">✓</div>
+        <div class="seg-icon">✉</div>
+        <div class="seg-title">Outbound Messaging</div>
+        <div class="seg-desc">AI copy frameworks, sequence design, personalisation, A/B testing</div>
+        <div class="seg-price">+$1,000</div>
+      </div>
+      <div class="seg-card" onclick="toggleSeg('crm')" id="seg-crm">
+        <div class="seg-check" id="sc-crm">✓</div>
+        <div class="seg-icon">🔗</div>
+        <div class="seg-title">CRM & Multi-Channel</div>
+        <div class="seg-desc">CRM integration, LinkedIn + email orchestration, handoff logic</div>
+        <div class="seg-price">+$1,000</div>
+      </div>
+      <div class="seg-card" onclick="toggleSeg('ai')" id="seg-ai">
+        <div class="seg-check" id="sc-ai">✓</div>
+        <div class="seg-icon">🤖</div>
+        <div class="seg-title">AI Outbound Responder</div>
+        <div class="seg-desc">Inbox setup, AI-assisted reply handling tuned to your business</div>
+        <div class="seg-price">+$1,000</div>
+      </div>
+    </div>
+    <div class="action-row">
+      <button class="btn-next" onclick="goNext()">OK <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 8h10M9 4l4 4-4 4"/></svg></button>
+    </div>
+  </div>
+</div>
+
+<!-- 14 Outbound status -->
+<div class="screen" id="screen-14">
+  <div class="q-wrap">
+    <div class="q-eyebrow">Engagement · 1 of 3</div>
+    <div class="q-text">Are you currently running any outbound?</div>
+    <div class="options-list">
+      <button class="opt" onclick="pickOpt(this,'outbound','li')"><span class="opt-key">A</span>Yes — LinkedIn only</button>
+      <button class="opt" onclick="pickOpt(this,'outbound','email')"><span class="opt-key">B</span>Yes — email only</button>
+      <button class="opt" onclick="pickOpt(this,'outbound','both')"><span class="opt-key">C</span>Yes — both LinkedIn and email</button>
+      <button class="opt" onclick="pickOpt(this,'outbound','no')"><span class="opt-key">D</span>Nothing running yet</button>
+      <button class="opt" onclick="pickOpt(this,'outbound','paused')"><span class="opt-key">E</span>Tried before and paused</button>
+    </div>
+  </div>
+</div>
+
+<!-- 15 Handover owner -->
+<div class="screen" id="screen-15">
+  <div class="q-wrap">
+    <div class="q-eyebrow">Engagement · 2 of 3</div>
+    <div class="q-text">Who will own this system after Day 30 handover?</div>
+    <div class="q-sub">If nobody owns it after we hand it over, we're building something that dies on arrival.</div>
+    <input class="q-input" type="text" placeholder="Name and role — or be honest if this is unclear" id="postOwner" oninput="checkHandover()" onkeydown="enterNext(event)">
+    <div class="flag flag-warn" id="flag-handover">⚠ No clear post-handover owner is a significant risk. We need to address this before Day 1.</div>
+    <div class="action-row">
+      <button class="btn-next" onclick="goNext()">OK <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 8h10M9 4l4 4-4 4"/></svg></button>
+      <span class="btn-hint">press Enter ↵</span>
+    </div>
+  </div>
+</div>
+
+<!-- 16 Success criteria -->
+<div class="screen" id="screen-16">
+  <div class="q-wrap">
+    <div class="q-eyebrow">Engagement · 3 of 3</div>
+    <div class="q-text">What does success look like at end of Day 30?</div>
+    <div class="q-sub">Be specific. Vague answers mean we set the KPI at Day 1 ourselves — you don't want that.</div>
+    <textarea class="q-input" placeholder="e.g. 20 qualified meetings booked, reply rate above 8%, $200K pipeline generated..." id="successCriteria" onkeydown="ctrlEnterNext(event)"></textarea>
+    <div class="action-row">
+      <button class="btn-next" onclick="goNext()">Review & submit <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 8h10M9 4l4 4-4 4"/></svg></button>
+      <span class="btn-hint">Ctrl + Enter ↵</span>
+    </div>
+  </div>
+</div>
+
+<!-- 17 OUTRO -->
+<div class="screen" id="screen-17">
+  <div class="outro-wrap">
+    <div class="outro-icon">🎯</div>
+    <div class="outro-title">You're all set.</div>
+    <div class="outro-sub">We'll review your intake within 2 business days and book your Day 1 Assessment call.</div>
+    <div class="sum-box">
+      <div class="sum-row"><span class="sum-k">Company</span><span class="sum-v" id="sum-company">—</span></div>
+      <div class="sum-row"><span class="sum-k">Segments selected</span><span class="sum-v" id="sum-segs">—</span></div>
+      <div class="sum-row"><span class="sum-k">Base subscription</span><span class="sum-v">$2,000</span></div>
+      <div class="sum-row"><span class="sum-k">Add-on segments</span><span class="sum-v" id="sum-addon">$0</span></div>
+      <div class="sum-row sum-total"><span class="sum-k">Estimated minimum total</span><span class="sum-v" id="sum-total">$2,000</span></div>
+    </div>
+    <button class="btn-start" onclick="finalSubmit()" id="btnSubmit">Confirm and submit →</button>
+  </div>
+</div>
+
+<script>
+let current = 0;
+const TOTAL = 18;
+const sel = {};
+const multi = {};
+const segs = new Set();
+const segNames = { data:'Data Sourcing', messaging:'Outbound Messaging', crm:'CRM & Multi-Channel', ai:'AI Responder' };
+
+function showScreen(n) {
+  const prev = document.getElementById(`screen-${current}`);
+  const next = document.getElementById(`screen-${n}`);
+  if (!next) return;
+  prev.classList.add('exit-up');
+  setTimeout(() => prev.classList.remove('active','exit-up'), 380);
+  next.classList.add('active');
+  current = n;
+  updateUI();
+  const first = next.querySelector('input, textarea');
+  if (first) setTimeout(() => first.focus(), 400);
+}
+
+function goNext() { if (current < TOTAL-1) { if (current === TOTAL-2) buildOutro(); showScreen(current+1); } }
+function goBack() { if (current > 0) showScreen(current-1); }
+
+function updateUI() {
+  const pct = current === 0 ? 0 : Math.round((current/(TOTAL-2))*100);
+  document.getElementById('progressFill').style.width = pct+'%';
+  document.getElementById('progressLabel').textContent = current === 0 ? '' : `${current} / ${TOTAL-2}`;
+  document.getElementById('btnBack').disabled = current === 0;
+  document.getElementById('btnFwd').disabled = current === TOTAL-1;
+}
+
+function pickOpt(btn, group, value) {
+  btn.closest('.options-list, .options-grid').querySelectorAll('.opt').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  sel[group] = value;
+  setTimeout(goNext, 260);
+}
+
+function toggleOpt(btn, group, value) {
+  if (!multi[group]) multi[group] = new Set();
+  multi[group].has(value) ? (multi[group].delete(value), btn.classList.remove('selected')) : (multi[group].add(value), btn.classList.add('selected'));
+}
+
+function toggleSeg(s) {
+  const card = document.getElementById(`seg-${s}`);
+  const check = document.getElementById(`sc-${s}`);
+  segs.has(s) ? (segs.delete(s), card.classList.remove('selected')) : (segs.add(s), card.classList.add('selected'));
+  const total = 2000 + segs.size * 1000;
+  document.getElementById('pillPrice').textContent = '$' + total.toLocaleString();
+  const pill = document.getElementById('pricingPill');
+  pill.classList.add('bump');
+  setTimeout(() => pill.classList.remove('bump'), 500);
+}
+
+function checkVolume() {
+  const v = sel['volume'], i = sel['infra'];
+  const mismatch = i === 'none' && (v === '5000-15000' || v === '15000+');
+  document.getElementById('flag-volume').classList.toggle('show', mismatch);
+  setTimeout(goNext, 260);
+}
+
+function calcStack() {
+  const t = multi['tools'] || new Set();
+  const notes = [];
+  if (t.has('clay')) notes.push('Clay adds $149–$800/mo in credits');
+  if (t.has('salesforce')) notes.push('Salesforce adds complexity to the CRM segment');
+  if (t.has('none')) notes.push('No stack — we\'ll propose tools. Budget $300–$800/mo minimum.');
+  const flag = document.getElementById('flag-stack');
+  if (notes.length) { flag.innerHTML = 'ℹ ' + notes.join(' · '); flag.classList.add('show'); }
+  else flag.classList.remove('show');
+}
+
+function checkHandover() {
+  const v = document.getElementById('postOwner').value.trim().toLowerCase();
+  document.getElementById('flag-handover').classList.toggle('show', !v || v.includes('nobody') || v.includes('not sure') || v.includes('unsure'));
+}
+
+function showFlag(id) { document.getElementById(id).classList.add('show'); }
+function hideFlag(id) { document.getElementById(id).classList.remove('show'); }
+function show(id) { document.getElementById(id).style.display = 'block'; }
+function hide(id) { document.getElementById(id).style.display = 'none'; }
+function enterNext(e) { if (e.key === 'Enter') { e.preventDefault(); goNext(); } }
+function ctrlEnterNext(e) { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); goNext(); } }
+
+function buildOutro() {
+  document.getElementById('sum-company').textContent = document.getElementById('companyName').value || '—';
+  document.getElementById('sum-segs').textContent = segs.size ? [...segs].map(s => segNames[s]).join(', ') : 'None selected';
+  const addon = segs.size * 1000;
+  document.getElementById('sum-addon').textContent = addon ? '+$' + addon.toLocaleString() : '$0';
+  document.getElementById('sum-total').textContent = '$' + (2000 + addon).toLocaleString();
+}
+
+function finalSubmit() {
+  const btn = document.getElementById('btnSubmit');
+  btn.textContent = '✓ Submitted — we\'ll be in touch within 2 business days';
+  btn.style.background = 'var(--green)';
+  btn.disabled = true;
+  document.getElementById('progressFill').style.width = '100%';
+}
+
+document.addEventListener('keydown', e => {
+  const screen = document.getElementById(`screen-${current}`);
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    const opts = [...screen.querySelectorAll('.opt:not(.options-grid .opt)')];
+    if (!opts.length) return;
+    const i = opts.findIndex(o => o.classList.contains('selected'));
+    if (e.key === 'ArrowDown' && i < opts.length-1) opts[i+1].click();
+    if (e.key === 'ArrowUp' && i > 0) opts[i-1].click();
+    e.preventDefault();
+  }
+});
+
+updateUI();
+</script>
+</body>
+</html>
